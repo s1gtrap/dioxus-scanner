@@ -15,5 +15,6 @@ image = "0.24.7"
 log = "0.4.19"
 rxing = "0.4.9"
 wasm-bindgen = "0.2.87"
+wasm-bindgen-futures = "0.4.37"
 wasm-logger = "0.2.0"
-web-sys = { version = "0.3.64", features = ["CanvasRenderingContext2d", "HtmlCanvasElement", "HtmlImageElement", "ImageData"] }
+web-sys = { version = "0.3.64", features = ["CanvasRenderingContext2d", "HtmlCanvasElement", "HtmlImageElement", "HtmlVideoElement", "ImageData", "Navigator", "MediaDevices", "MediaStream", "MediaStreamConstraints", "OffscreenCanvas", "OffscreenCanvasRenderingContext2d"] }

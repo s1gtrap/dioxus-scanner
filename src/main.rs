@@ -46,7 +46,9 @@ fn Home(cx: Scope) -> Element {
     let mut count = use_state(cx, || 0);
     let state = use_state(cx, || ());
     use_future(cx, (count,), |_| async move {
-        let document = web_sys::window().unwrap().document().unwrap();
+        let window = web_sys::window().unwrap();
+        let document = window.document().unwrap();
+
         let img: web_sys::HtmlImageElement = document
             .get_element_by_id("code")
             .unwrap()
@@ -81,28 +83,111 @@ fn Home(cx: Scope) -> Element {
             .deref()
             .to_vec();
 
-        use rxing::common::HybridBinarizer;
-        use rxing::{BinaryBitmap, BufferedImageLuminanceSource, Reader};
-        let mut image = BinaryBitmap::new(HybridBinarizer::new(BufferedImageLuminanceSource::new(
-            image::DynamicImage::from(
-                image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(
-                    img.width() as _,
-                    img.height() as _,
-                    data,
-                )
+        let video: web_sys::HtmlVideoElement = document
+            .query_selector("video")
+            .unwrap()
+            .unwrap()
+            .dyn_into()
+            .unwrap();
+        let media_devices = window.navigator().media_devices().unwrap();
+        let mut cons = web_sys::MediaStreamConstraints::new();
+        cons.video(&wasm_bindgen::JsValue::TRUE);
+        let stream: web_sys::MediaStream = wasm_bindgen_futures::JsFuture::from(
+            media_devices
+                .get_user_media_with_constraints(&cons)
                 .unwrap(),
-            ),
-        )));
+        )
+        .await
+        .unwrap()
+        .dyn_into()
+        .unwrap();
+        video.set_src_object(Some(&stream));
 
-        let mut reader = rxing::qrcode::QRCodeReader;
-
-        let res = reader.decode(&mut image);
-        match res {
-            Ok(v) => {
-                log::info!("{v}")
+        let request_animation_frame = {
+            let window = window.clone();
+            move |f: &Closure<dyn FnMut()>| {
+                window
+                    .request_animation_frame(f.as_ref().unchecked_ref())
+                    .expect("should register `requestAnimationFrame` OK");
             }
-            Err(e) => log::error!("{e}"),
-        }
+        };
+        let scan_barcode = {
+            //let canvas = canvas.clone();
+            move |video: &web_sys::HtmlVideoElement| -> Option<String> {
+                if video.video_width() == 0 {
+                    return None;
+                }
+                let canvas =
+                    web_sys::OffscreenCanvas::new(video.video_width(), video.video_height())
+                        .unwrap();
+                let ctx: web_sys::OffscreenCanvasRenderingContext2d = canvas
+                    .get_context("2d")
+                    .unwrap()
+                    .unwrap()
+                    .dyn_into()
+                    .unwrap();
+                /*if canvas.width() != video.video_width() {
+                    canvas.set_width(video.video_width());
+                }
+                if canvas.height() != video.video_height() {
+                    canvas.set_height(video.video_height());
+                }*/
+
+                ctx.draw_image_with_html_video_element_and_dw_and_dh(
+                    &video,
+                    0.0,
+                    0.0,
+                    canvas.width() as _,
+                    canvas.height() as _,
+                );
+
+                ctx.get_image_data(0.0, 0.0, canvas.width() as _, canvas.height() as _)
+                    .unwrap();
+                if let Ok(data) =
+                    ctx.get_image_data(0.0, 0.0, canvas.width() as _, canvas.height() as _)
+                {
+                    //log::info!("{} {} {} {}", 0.0, 0.0, canvas.width(), canvas.height());
+                    let data = data.data().clone().deref().to_vec();
+
+                    use rxing::common::HybridBinarizer;
+                    use rxing::{BinaryBitmap, BufferedImageLuminanceSource, Reader};
+                    let mut image = BinaryBitmap::new(HybridBinarizer::new(
+                        BufferedImageLuminanceSource::new(image::DynamicImage::from(
+                            image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(
+                                canvas.width() as _,
+                                canvas.height() as _,
+                                data,
+                            )
+                            .unwrap(),
+                        )),
+                    ));
+
+                    let mut reader = rxing::qrcode::QRCodeReader;
+
+                    let res = reader.decode(&mut image);
+                    match res {
+                        Ok(v) => {
+                            log::info!("{v}")
+                        }
+                        Err(e) => log::error!("{e}"),
+                    }
+                }
+
+                None
+            }
+        };
+        use std::rc::Rc;
+        use wasm_bindgen::prelude::*;
+        // TODO: should probably be requestVideoFrameCallback
+        let f = Rc::new(RefCell::new(None));
+        let request_animation_frame2 = request_animation_frame.clone();
+        let g = f.clone();
+        *g.borrow_mut() = Some(Closure::<dyn FnMut() -> ()>::new(move || {
+            log::info!("{:?}", scan_barcode(&video));
+            //window.request_animation_frame(f.borrow().as_ref().unwrap());
+            request_animation_frame2(f.borrow().as_ref().unwrap());
+        }));
+        request_animation_frame(g.borrow().as_ref().unwrap());
 
         /*//let buf: image::ImageBuffer<image::Rgba<_>, Vec<u8>> =
         //image::ImageBuffer::from_raw(img.width(), img.height(), data).unwrap();
@@ -164,6 +249,9 @@ fn Home(cx: Scope) -> Element {
             width: 220,
             height: 200,
             src: "a.png",
+        }
+        video {
+            autoplay: true,
         }
         div {
             h1 { "High-Five counter: {count}" }
