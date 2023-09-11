@@ -14,9 +14,9 @@ impl<F, T> From<F> for StaticCallback<T>
 where
     F: FnMut(T) + 'static,
 {
-    fn from(mut f: F) -> Self {
+    fn from(f: F) -> Self {
         Self {
-            inner: Rc::new(RefCell::new(Box::new(move |input| f(input)))),
+            inner: Rc::new(RefCell::new(Box::new(f))),
         }
     }
 }
