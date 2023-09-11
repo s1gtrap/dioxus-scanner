@@ -22,6 +22,7 @@ wasm-bindgen-futures = "0.4.37"
 [dependencies.web-sys]
 version = "0.3.64"
 features = [
+    "DomException",
     "HtmlVideoElement",
     "ImageData",
     "MediaDevices",

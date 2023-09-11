@@ -10,8 +10,11 @@ fn main() {
 fn app(cx: Scope) -> Element {
     render! {
         Scanner {
-            cb: |res: rxing::RXingResult| {
-                log::info!("Scanned {:?}", res.getText());
+            handlescan: |res: rxing::RXingResult| {
+                log::info!("{:?}", res.getText());
+            },
+            handleerror: |e: web_sys::DomException| {
+                log::error!("{:?}", e.message());
             },
         }
     }
