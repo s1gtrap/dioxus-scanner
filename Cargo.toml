@@ -9,9 +9,9 @@ license = "MIT OR Apache-2.0"
 name = "qrcode"
 
 [dependencies]
-dioxus = "0.4.0"
+dioxus = { git = "https://github.com/DioxusLabs/dioxus" }
 dioxus-logger = "0.4.1"
-dioxus-web = "0.4.0"
+dioxus-web = { git = "https://github.com/DioxusLabs/dioxus" }
 image = "0.24.7"
 log = "0.4.19"
 rand = "0.8.5"
