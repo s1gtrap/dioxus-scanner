@@ -5,6 +5,9 @@ use std::{marker::PhantomData, rc::Rc};
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 
+pub use rxing::RXingResult;
+pub use web_sys::DomException;
+
 #[derive(Clone)]
 pub struct StaticCallback<T> {
     inner: Rc<RefCell<Box<dyn FnMut(T)>>>,
@@ -42,7 +45,7 @@ async fn get_stream() -> Result<web_sys::MediaStream, web_sys::DomException> {
     wasm_bindgen_futures::JsFuture::from(
         media_devices
             .get_user_media_with_constraints(&constraints)
-            .unwrap(),
+            .map_err(|s| s.dyn_into::<web_sys::DomException>().unwrap())?,
     )
     .await
     .map(|s| s.dyn_into().unwrap())
