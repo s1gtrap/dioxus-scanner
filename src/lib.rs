@@ -3,6 +3,7 @@
 use std::{marker::PhantomData, rc::Rc};
 
 use dioxus::prelude::*;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 pub use rxing::RXingResult;
@@ -39,8 +40,22 @@ async fn get_stream() -> Result<web_sys::MediaStream, web_sys::DomException> {
 
     let media_devices = window.navigator().media_devices().unwrap();
 
+    #[derive(Serialize, Deserialize)]
+    pub struct FacingMode {
+        pub ideal: String,
+    }
+
+    let mut track_constraints = web_sys::MediaTrackConstraints::new();
+    track_constraints.facing_mode(
+        &JsValue::from_serde(&FacingMode {
+            ideal: "environment".to_string(),
+        })
+        .unwrap(),
+    );
+
     let mut constraints = web_sys::MediaStreamConstraints::new();
-    constraints.video(&wasm_bindgen::JsValue::TRUE);
+    constraints.video(&track_constraints);
+
     log::info!("waiting for permission..");
     wasm_bindgen_futures::JsFuture::from(
         media_devices
